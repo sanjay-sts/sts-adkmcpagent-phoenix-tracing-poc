@@ -1,0 +1,29 @@
+# Google ADK Agent Dependencies
+# ============================================
+
+# Core Google ADK Framework
+google-adk>=0.1.0
+
+# LiteLLM for model integration (supports Ollama)
+litellm>=1.0.0
+
+# HTTP client for MCP connection
+httpx>=0.25.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Optional: For enhanced logging
+# structlog>=24.0.0
+
+# Optional: For testing
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+
+# ============================================
+# MCP Server Dependencies (if running locally)
+# Already in mcp_file/requirements.txt:
+# - fastmcp==2.13.3
+# - uvicorn[standard]>=0.30.0
+# - starlette>=0.37.0
+# ============================================
