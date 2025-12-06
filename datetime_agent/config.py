@@ -39,6 +39,12 @@ class AgentConfig:
         "arn:aws:bedrock:us-east-1:590894668881:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0"
     )
 
+    # Phoenix Arize Tracing Configuration
+    PHOENIX_ENABLED: bool = os.getenv("PHOENIX_ENABLED", "true").lower() == "true"
+    PHOENIX_COLLECTOR_ENDPOINT: str = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://localhost:6006")
+    PHOENIX_PROJECT_NAME: str = os.getenv("PHOENIX_PROJECT_NAME", "adk-mcp-agent-tracing")
+    PHOENIX_TRACES_ENDPOINT: str = os.getenv("PHOENIX_TRACES_ENDPOINT", "http://localhost:6006/v1/traces")
+
     # Agent Metadata
     AGENT_NAME: str = "datetime_agent"
     AGENT_VERSION: str = "1.0.0"
@@ -91,6 +97,11 @@ class AgentConfig:
         else:
             print(f"  Ollama Base URL: {cls.OLLAMA_BASE_URL}")
             print(f"  Model: {cls.get_model_identifier()}")
+
+        print(f"  Phoenix Tracing: {'Enabled' if cls.PHOENIX_ENABLED else 'Disabled'}")
+        if cls.PHOENIX_ENABLED:
+            print(f"  Phoenix Project: {cls.PHOENIX_PROJECT_NAME}")
+            print(f"  Phoenix Endpoint: {cls.PHOENIX_TRACES_ENDPOINT}")
 
         print(f"  Version: {cls.AGENT_VERSION}")
         print(f"  Log Level: {cls.LOG_LEVEL}")

@@ -13,6 +13,10 @@ httpx>=0.25.0
 # Environment variable management
 python-dotenv>=1.0.0
 
+# Phoenix Arize for LLM observability and tracing
+arize-phoenix-otel>=0.14.0
+openinference-instrumentation-google-adk>=0.1.0
+
 # Optional: For enhanced logging
 # structlog>=24.0.0
 

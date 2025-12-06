@@ -15,8 +15,9 @@ This agent uses Google's Agent Development Kit (ADK) to create a conversational 
 ```
 ┌─────────────────────────────────────────┐
 │  DateTime Agent (Google ADK)            │
-│  - Ollama gemma3:4b (local LLM)         │
+│  - AWS Bedrock / Claude Haiku 4.5       │
 │  - LiteLLM model integration            │
+│  - Phoenix Arize tracing enabled        │
 └────────────────┬────────────────────────┘
                  │ MCP Protocol
                  │ (Streamable-HTTP)
@@ -27,19 +28,23 @@ This agent uses Google's Agent Development Kit (ADK) to create a conversational 
 │  - Tools: 4 datetime tools              │
 │  - Resources: 2 datetime resources      │
 └─────────────────────────────────────────┘
+                 │
+                 │ OpenTelemetry Traces
+                 v
+┌─────────────────────────────────────────┐
+│  Phoenix Arize (localhost:6006)         │
+│  - LLM call tracing                     │
+│  - Tool usage monitoring                │
+│  - Performance analytics                │
+└─────────────────────────────────────────┘
 ```
 
 ## Prerequisites
 
-1. **Ollama Installed and Running**
-   ```bash
-   # Verify Ollama is running:
-   curl http://localhost:11434/api/tags
-
-   # Verify gemma3:4b is available:
-   ollama list
-   # Should show gemma3:4b in the list
-   ```
+1. **AWS Bedrock Access** (or Ollama for local models)
+   - AWS credentials configured for Bedrock
+   - Claude Haiku 4.5 model access enabled
+   - OR: Ollama installed with a tool-capable model (gpt-oss, llama3, mistral)
 
 2. **FastMCP Server Running**
    ```bash
@@ -49,7 +54,13 @@ This agent uses Google's Agent Development Kit (ADK) to create a conversational 
    # Server runs at: http://localhost:8000/adkmcp
    ```
 
-3. **Dependencies Installed**
+3. **Phoenix Arize** (Optional - for tracing/observability)
+   ```bash
+   # Phoenix running in Docker on port 6006
+   # Visit http://localhost:6006 to view traces
+   ```
+
+4. **Dependencies Installed**
    ```bash
    pip install -r requirements-agent.txt
    ```
@@ -63,9 +74,22 @@ Configuration is managed through environment variables in the `.env` file at the
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MCP_SERVER_URL` | `http://localhost:8000/adkmcp` | MCP server endpoint |
+| `MODEL_PROVIDER` | `bedrock` | Model provider: "bedrock" or "ollama" |
+| **AWS Bedrock Settings** | | |
+| `AWS_REGION` | `us-east-1` | AWS region for Bedrock |
+| `BEDROCK_MODEL` | `arn:aws:bedrock:...` | Full Bedrock model ARN |
+| `AWS_BEARER_TOKEN_BEDROCK` | - | AWS bearer token for authentication |
+| **Ollama Settings** | | |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_MODEL` | `gemma3:4b` | Ollama model to use |
+| `OLLAMA_MODEL` | `gpt-oss` | Ollama model to use |
+| **Phoenix Tracing** | | |
+| `PHOENIX_ENABLED` | `true` | Enable/disable Phoenix tracing |
+| `PHOENIX_COLLECTOR_ENDPOINT` | `http://localhost:6006` | Phoenix collector URL |
+| `PHOENIX_PROJECT_NAME` | `adk-mcp-agent-tracing` | Project name in Phoenix |
+| `PHOENIX_TRACES_ENDPOINT` | `http://localhost:6006/v1/traces` | Phoenix traces endpoint |
+| **Other** | | |
 | `LOG_LEVEL` | `INFO` | Logging verbosity |
+| `DEBUG` | `false` | Enable debug mode |
 
 ### Example .env File
 
@@ -73,12 +97,27 @@ Configuration is managed through environment variables in the `.env` file at the
 # MCP Server Configuration
 MCP_SERVER_URL=http://localhost:8000/adkmcp
 
-# Ollama Configuration
+# Model Provider
+MODEL_PROVIDER=bedrock  # or "ollama"
+
+# AWS Bedrock Configuration (if using Bedrock)
+AWS_REGION=us-east-1
+BEDROCK_MODEL=arn:aws:bedrock:us-east-1:590894668881:inference-profile/global.anthropic.claude-haiku-4-5-20251001-v1:0
+AWS_BEARER_TOKEN_BEDROCK=your-bearer-token-here
+
+# Ollama Configuration (if using Ollama)
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=gemma3:4b
+OLLAMA_MODEL=gpt-oss
+
+# Phoenix Arize Tracing
+PHOENIX_ENABLED=true
+PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006
+PHOENIX_PROJECT_NAME=adk-mcp-agent-tracing
+PHOENIX_TRACES_ENDPOINT=http://localhost:6006/v1/traces
 
 # Logging
-LOG_LEVEL=INFO
+LOG_LEVEL=DEBUG
+DEBUG=true
 ```
 
 ## Usage
@@ -276,6 +315,98 @@ Error: ModuleNotFoundError: No module named 'google.adk'
 Solution: Install dependencies:
   pip install -r requirements-agent.txt
 ```
+
+## Phoenix Arize Tracing
+
+The agent includes built-in support for Phoenix Arize, an observability platform for LLM applications that provides detailed tracing of:
+- LLM calls and responses
+- Tool invocations (MCP tools)
+- Latency and performance metrics
+- Token usage and costs
+
+### Setup Phoenix
+
+1. **Run Phoenix in Docker:**
+   ```bash
+   docker run -p 6006:6006 arizephoenix/phoenix:latest
+   ```
+
+2. **Access Phoenix UI:**
+   - Open http://localhost:6006 in your browser
+   - You'll see the Phoenix dashboard
+
+3. **Configure the Agent:**
+   Phoenix is enabled by default. The configuration is already set in `.env`:
+   ```bash
+   PHOENIX_ENABLED=true
+   PHOENIX_COLLECTOR_ENDPOINT=http://localhost:6006
+   PHOENIX_PROJECT_NAME=adk-mcp-agent-tracing
+   PHOENIX_TRACES_ENDPOINT=http://localhost:6006/v1/traces
+   ```
+
+### Using Phoenix
+
+Once the agent is running with Phoenix enabled, you'll see:
+
+1. **Automatic Instrumentation:**
+   - All LLM calls to Claude Haiku are traced
+   - MCP tool invocations are recorded
+   - Request/response pairs are captured
+
+2. **Phoenix Dashboard Features:**
+   - **Traces View:** See all LLM interactions in real-time
+   - **Projects:** Organize traces by project (adk-mcp-agent-tracing)
+   - **Performance:** Analyze latency, token usage, and costs
+   - **Debugging:** Inspect full request/response payloads
+
+3. **Example Trace Information:**
+   ```
+   Trace: "What time is it in Tokyo?"
+   ├─ LLM Call (Claude Haiku)
+   │  ├─ Input: User query + system instructions
+   │  ├─ Tool Selection: get_current_time
+   │  └─ Duration: 1.2s, Tokens: 245
+   ├─ MCP Tool Call
+   │  ├─ Tool: get_current_time("Asia/Tokyo")
+   │  ├─ Response: "2025-12-06T08:42:00+09:00"
+   │  └─ Duration: 15ms
+   └─ LLM Response Generation
+      ├─ Output: Formatted response to user
+      └─ Duration: 0.8s, Tokens: 128
+   ```
+
+### Disabling Phoenix
+
+To disable Phoenix tracing:
+
+1. **Update `.env`:**
+   ```bash
+   PHOENIX_ENABLED=false
+   ```
+
+2. **Restart the agent**
+
+The agent will continue to function normally without tracing.
+
+### Phoenix Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PHOENIX_ENABLED` | `true` | Enable/disable Phoenix tracing |
+| `PHOENIX_COLLECTOR_ENDPOINT` | `http://localhost:6006` | Phoenix collector URL |
+| `PHOENIX_PROJECT_NAME` | `adk-mcp-agent-tracing` | Project name in Phoenix UI |
+| `PHOENIX_TRACES_ENDPOINT` | `http://localhost:6006/v1/traces` | OTEL traces endpoint |
+
+### Benefits
+
+Phoenix Arize tracing provides:
+- **Debugging:** Quickly identify issues with LLM responses or tool calls
+- **Optimization:** Analyze latency bottlenecks and optimize performance
+- **Cost Tracking:** Monitor token usage and associated costs
+- **Quality Assurance:** Review LLM outputs for quality and consistency
+- **Analytics:** Understand usage patterns and user interactions
+
+For more information, visit: https://docs.arize.com/phoenix
 
 ## Development
 

@@ -5,14 +5,35 @@ A Google ADK agent that connects to the FastMCP datetime server
 to provide timezone and datetime assistance.
 """
 
+# Phoenix Arize Tracing Setup - MUST BE FIRST, before any other imports
+from .config import AgentConfig
+
+if AgentConfig.PHOENIX_ENABLED:
+    try:
+        from phoenix.otel import register
+
+        # Register Phoenix tracer with auto-instrumentation
+        # This automatically instruments Google ADK based on installed OpenInference packages
+        tracer_provider = register(
+            project_name=AgentConfig.PHOENIX_PROJECT_NAME,
+            endpoint=AgentConfig.PHOENIX_TRACES_ENDPOINT,
+            auto_instrument=True  # Auto-detect and instrument Google ADK
+        )
+
+        print(f"[Phoenix] Tracing enabled for project: {AgentConfig.PHOENIX_PROJECT_NAME}")
+        print(f"[Phoenix] Sending traces to: {AgentConfig.PHOENIX_TRACES_ENDPOINT}")
+        print(f"[Phoenix] Auto-instrumentation: Enabled")
+    except Exception as e:
+        print(f"[Phoenix] Warning: Failed to initialize Phoenix tracing: {e}")
+        print(f"[Phoenix] Continuing without tracing...")
+
+# Import other dependencies after Phoenix setup
 from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool.mcp_toolset import (
     McpToolset,
     StreamableHTTPConnectionParams
 )
-
-from .config import AgentConfig
 
 
 # Agent Instructions
